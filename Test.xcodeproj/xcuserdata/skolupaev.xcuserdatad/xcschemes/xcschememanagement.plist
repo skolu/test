@@ -4,10 +4,35 @@
 <dict>
 	<key>SchemeUserState</key>
 	<dict>
+		<key>Glance - Test WatchKit 1 App.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>5</integer>
+		</dict>
+		<key>Notification - Test WatchKit 1 App.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>4</integer>
+		</dict>
+		<key>Notification - Watch2.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>2</integer>
+		</dict>
+		<key>Test WatchKit 1 App.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>3</integer>
+		</dict>
 		<key>Test.xcscheme</key>
 		<dict>
 			<key>orderHint</key>
 			<integer>0</integer>
+		</dict>
+		<key>Watch2.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>1</integer>
 		</dict>
 	</dict>
 	<key>SuppressBuildableAutocreation</key>
@@ -18,6 +43,16 @@
 			<true/>
 		</dict>
 		<key>84866D8C1BE472C000FA8DA4</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>84866D9D1BE472F500FA8DA4</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>84866DDD1BE4788400FA8DA4</key>
 		<dict>
 			<key>primary</key>
 			<true/>

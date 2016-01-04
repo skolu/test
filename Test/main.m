@@ -7,7 +7,7 @@
 //
 
 #import <UIKit/UIKit.h>
-#import "AppDelegate.h"
+#import "Test-Swift.h"
 
 int main(int argc, char * argv[]) {
     @autoreleasepool {
