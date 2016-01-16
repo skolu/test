@@ -6,10 +6,10 @@
         <capability name="Constraints to layout margins" minToolsVersion="6.0"/>
     </dependencies>
     <scenes>
-        <!--View Controller-->
+        <!--Swift View Controller-->
         <scene sceneID="tne-QT-ifu">
             <objects>
-                <viewController id="BYZ-38-t0r" customClass="ViewController" sceneMemberID="viewController">
+                <viewController id="BYZ-38-t0r" customClass="SwiftViewController" customModule="Test" customModuleProvider="target" sceneMemberID="viewController">
                     <layoutGuides>
                         <viewControllerLayoutGuide type="top" id="y3c-jy-aDJ"/>
                         <viewControllerLayoutGuide type="bottom" id="wfy-db-euE"/>
@@ -22,7 +22,7 @@
                                 <rect key="frame" x="260" y="40" width="46" height="30"/>
                                 <state key="normal" title="Button"/>
                                 <connections>
-                                    <action selector="click:" destination="BYZ-38-t0r" eventType="touchUpInside" id="Ab1-GH-UOA"/>
+                                    <action selector="click:" destination="BYZ-38-t0r" eventType="touchUpInside" id="VTS-2N-xAu"/>
                                 </connections>
                             </button>
                             <textField opaque="NO" clipsSubviews="YES" contentMode="scaleToFill" horizontalHuggingPriority="1000" verticalHuggingPriority="1000" horizontalCompressionResistancePriority="1000" verticalCompressionResistancePriority="1000" contentHorizontalAlignment="left" contentVerticalAlignment="center" text="www.microsoft.com" borderStyle="roundedRect" textAlignment="natural" minimumFontSize="17" translatesAutoresizingMaskIntoConstraints="NO" id="Yde-5s-IKU">
@@ -63,10 +63,10 @@
                         </constraints>
                     </view>
                     <connections>
-                        <outlet property="button" destination="XOQ-VT-Bk5" id="9SB-eL-7v2"/>
-                        <outlet property="field" destination="Yde-5s-IKU" id="1mr-gH-kqK"/>
-                        <outlet property="image" destination="I6T-Sd-Q31" id="9uW-jJ-LUb"/>
-                        <outlet property="picker" destination="YAm-Ia-cuV" id="pUO-r5-Gs1"/>
+                        <outlet property="button" destination="XOQ-VT-Bk5" id="eu6-eX-WWN"/>
+                        <outlet property="field" destination="Yde-5s-IKU" id="2vM-pq-VNd"/>
+                        <outlet property="image" destination="I6T-Sd-Q31" id="mNW-BK-oEk"/>
+                        <outlet property="picker" destination="YAm-Ia-cuV" id="3Gu-be-9AI"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>

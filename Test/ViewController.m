@@ -86,7 +86,7 @@ typedef struct {
 }
 
 - (IBAction)click:(id)sender {
-    NSString *urlStr = [NSString stringWithFormat:@"https://%@/favicon.ico", self.field.text];
+    NSString *urlStr = [NSString stringWithFormat:@"https://%@/assets/images/favicon.ico", self.field.text];
     NSLog(@"URL: %@", urlStr);
     NSURL *url = [NSURL URLWithString:urlStr];
     [[[NSURLSession sharedSession] dataTaskWithURL:url
