@@ -41,8 +41,6 @@ typedef struct {
     uint32_t biClrImportant;
 } BITMAPINFOHEADER;
 
-
-
 @interface IconDirEntry: NSObject {
 @package
     ICONDIRENTRY iconEntry;
@@ -65,7 +63,8 @@ typedef struct {
 @end
 
 
-@interface ViewController () {
+@interface ViewController () <UIPickerViewDelegate, UIPickerViewDataSource> {
+    NSArray<UIImage *> *images;
 }
 
 @end
@@ -78,6 +77,7 @@ typedef struct {
 
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
+    self.field.text = @"www.microsoft.com";
 }
 
 - (void)didReceiveMemoryWarning {
@@ -86,15 +86,36 @@ typedef struct {
 }
 
 - (IBAction)click:(id)sender {
-    NSString *urlStr = [NSString stringWithFormat:@"https://%@/favicon.ico", self.field.text];
+    NSString *urlStr = [NSString stringWithFormat:@"https://%@/assets/images/favicon.ico", self.field.text];
     NSLog(@"URL: %@", urlStr);
     NSURL *url = [NSURL URLWithString:urlStr];
     [[[NSURLSession sharedSession] dataTaskWithURL:url
                                 completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
-                                    if ([data length] > 0) {
-                                        [self parseIcons: data];
+                                    if ([(NSHTTPURLResponse *)response statusCode] == 200) {
+                                        if ([data length] > 0) {
+                                            images = [self parseIcons: data];
+                                            dispatch_async(dispatch_get_main_queue(), ^{
+                                                [self.picker reloadAllComponents];
+                                            });
+                                        }
                                     }
                                 }] resume];
+}
+
+- (NSInteger)numberOfComponentsInPickerView:(UIPickerView *)pickerView {
+    return 1;
+}
+
+- (NSInteger)pickerView:(UIPickerView *)pickerView numberOfRowsInComponent:(NSInteger)component {
+    return [images count];
+}
+
+- (NSString *)pickerView:(UIPickerView *)pickerView titleForRow:(NSInteger)row forComponent:(NSInteger)component {
+    return [NSString stringWithFormat:@"%.0f x %.0f", images[row].size.width, images[row].size.height];
+}
+
+- (void)pickerView:(UIPickerView *)pickerView didSelectRow:(NSInteger)row inComponent:(NSInteger)component {
+    self.image.image = images[row];
 }
 
 uint16_t parseShort(uint8_t *b) {
@@ -114,7 +135,7 @@ uint32_t parseLong(uint8_t *b) {
     return result;
 }
 
-- (NSArray<IconDirEntry *>*)parseIcons: (NSData *)ico_data {
+- (NSArray<UIImage *>*)parseIcons: (NSData *)ico_data {
     if ([ico_data length] < 6) {
         NSLog(@"ICONDIR data is too small");
         return nil;
@@ -135,6 +156,7 @@ uint32_t parseLong(uint8_t *b) {
         NSLog(@"ICONDIRENTRY array is too small");
         return nil;
     }
+    NSMutableArray *im_arr = [[NSMutableArray alloc] init];
     NSMutableArray *arr = [[NSMutableArray alloc] init];
     for (int i = 0; i < iconDir.idCount; ++i) {
         IconDirEntry *entry = [[IconDirEntry alloc] init];
@@ -170,15 +192,18 @@ uint32_t parseLong(uint8_t *b) {
             entry->iconHeader.biCompression = parseLong(header_data + 16);
             entry->iconHeader.biSizeImage = parseLong(header_data + 20);
             
+            if (entry->iconHeader.biSizeImage == 0) {
+                entry->iconHeader.biSizeImage = entry->iconEntry.dwBytesInRes - entry->iconHeader.biSize;
+            }
+            
             NSLog(@"Bitmap Size: %dx%d; Bit Count: %d",
                   entry->iconHeader.biWidth, entry->iconHeader.biHeight, entry->iconHeader.biBitCount);
             
             if (entry->iconHeader.biCompression == 0) {
-                if (entry->iconEntry.bColorCount != 0) {
-                    entry->coSize = entry->iconEntry.bColorCount * 4;
+                if (entry->iconHeader.biBitCount < 24) {
+                    int colors = (entry->iconEntry.bColorCount > 0) ? entry->iconEntry.bColorCount : 256;
+                    entry->coSize = colors * 4;
                     entry->coData = header_data + entry->iconHeader.biSize;
-                } else {
-                    entry->coSize = entry->iconEntry.bColorCount * 4;
                 }
                 entry->xorData = header_data + entry->iconHeader.biSize + entry->coSize;
 
@@ -204,17 +229,89 @@ uint32_t parseLong(uint8_t *b) {
                     NSLog(@"AND Line size: %d", entry->andLineSize);
                 }
                 
-                if ((entry->xorLineSize + entry->andLineSize) * entry->iconHeader.biWidth != entry->iconHeader.biSizeImage) {
-                    NSMutableArray *colorMap = nil;
-                    if (entry->iconEntry.bColorCount > 0) {
-                        colorMap = [[NSMutableArray alloc] init];
-                        for (int i = 0; i < entry->iconEntry.bColorCount; ++i) {
-                            uint8_t *color_ptr = entry->coData + i * 4;
-                            UIColor *c = [UIColor colorWithRed:*color_ptr green:*(color_ptr+1) blue:*(color_ptr+2) alpha:1.0];
-                            [colorMap addObject:c];
+                if ((entry->xorLineSize + entry->andLineSize) * entry->iconHeader.biWidth <= entry->iconHeader.biSizeImage) {
+                    uint8_t *image_data = malloc(entry->iconEntry.bWidth * entry->iconEntry.bHeight * 4);
+                    memset(image_data, 0, entry->iconEntry.bWidth * entry->iconEntry.bHeight * 4);
+                    for (int y = 0; y < entry->iconEntry.bHeight; ++y) {
+                        uint8_t *xor_data = entry->xorData + ((entry->iconEntry.bHeight - 1 - y) * entry->xorLineSize);
+                        for (int x = 0; x < entry->iconEntry.bWidth; ++x) {
+                            uint8_t *pixel_ptr = image_data + ((x + (y * entry->iconEntry.bHeight)) * 4);
+                            switch(entry->iconHeader.biBitCount) {
+                                case 1: // color map monochrome
+                                case 4: // color map 16 colors
+                                case 8: // color map 256 colors
+                                {
+                                    int color_idx = -1;
+                                    switch (entry->iconHeader.biBitCount) {
+                                        case 1: // color map monochrome
+                                            color_idx = (xor_data[x/8] & 1<<(7-x%8)) > 0 ? 1 : 0;
+                                            break;
+                                        case 4: // color map 16 colors
+                                            color_idx = xor_data[x/2];
+                                            if (x%2 == 0) {
+                                                color_idx = color_idx >> 4;
+                                            }
+                                            color_idx &= 0x0f;
+                                            break;
+                                        case 8: // color map 256 colors
+                                            color_idx = pixel_ptr[x];
+                                            break;
+                                    }
+                                    int color_num = entry->iconEntry.bColorCount > 0 ? entry->iconEntry.bColorCount : 256;
+                                    if (color_idx < color_num) {
+                                        uint8_t *color_ptr = entry->coData + (color_idx * 4);
+                                        *(pixel_ptr) = *(color_ptr + 2);
+                                        *(pixel_ptr + 1) = *(color_ptr + 1);
+                                        *(pixel_ptr + 2) = *(color_ptr + 0);
+                                        *(pixel_ptr + 3) = 0xff;
+                                       //NSLog(@"%d:%d: Index: %d Color(%d,%d,%d)", y, x, color_idx, *(pixel_ptr), *(pixel_ptr+1), *(pixel_ptr+2));
+                                    } else {
+                                        NSLog(@"Color index is out of bounds");
+                                    }
+                                }
+                                    break;
+                                case 24: // no color map r g b
+                                {
+                                    uint8_t *ptr = xor_data + (x * 3);
+                                    *(pixel_ptr) = *(ptr + 2);
+                                    *(pixel_ptr + 1) = *(ptr + 1);
+                                    *(pixel_ptr + 2) = *(ptr + 0);
+                                    *(pixel_ptr + 3) = 0xff;
+                                }
+                                    break;
+                                case 32: // no color map r g b a
+                                {
+                                    uint8_t *ptr = xor_data + (x * 4);
+                                    *(pixel_ptr) = *(ptr + 2);
+                                    *(pixel_ptr + 1) = *(ptr + 1);
+                                    *(pixel_ptr + 2) = *(ptr + 0);
+                                    *(pixel_ptr + 3) = *(ptr + 3);
+                                }
+                                    break;
+                            }
+                            if (entry->andLineSize > 0) {
+                                uint8_t *and_data = entry->andData + ((entry->iconEntry.bHeight - 1 - y) * entry->andLineSize);
+                                if ((and_data[x/8] & 1<<(7-x%8)) != 0) {
+                                    *(pixel_ptr + 3) = 0x00;
+                                }
+                            }
                         }
+                        
                     }
                     
+                    NSMutableData *rr = [NSMutableData dataWithBytes:image_data length:entry->iconEntry.bWidth * entry->iconEntry.bHeight * 4];
+                    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+                    CGContextRef context = CGBitmapContextCreate(image_data, entry->iconEntry.bWidth, entry->iconEntry.bHeight,
+                                          8, entry->iconEntry.bWidth * 4, colorSpace, kCGImageAlphaPremultipliedLast|kCGBitmapByteOrderDefault);
+                    CGImageRef image_ref = CGBitmapContextCreateImage(context);
+                    UIImage *image = [UIImage imageWithCGImage:image_ref];
+                    CGImageRelease(image_ref);
+                    CGColorSpaceRelease(colorSpace);
+                    CGContextRelease(context);
+                    
+                    [im_arr addObject:image];
+
+                    free(image_data);
                     
                 } else {
                     NSLog(@"Incorrect image size");
@@ -228,7 +325,7 @@ uint32_t parseLong(uint8_t *b) {
         }
     }];
     
-    return arr;
+    return im_arr;
 }
 /*
 

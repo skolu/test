@@ -12,6 +12,7 @@
 @property (nonatomic, weak) IBOutlet UITextField *field;
 @property (nonatomic, weak) IBOutlet UIButton *button;
 @property (nonatomic, weak) IBOutlet UIImageView *image;
+@property (weak, nonatomic) IBOutlet UIPickerView *picker;
 - (IBAction)click:(id)sender;
 
 @end
