@@ -58,11 +58,11 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "TestTests/DerTest.swift"
-            timestampString = "474572595.610041"
+            timestampString = "474790234.324454"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "83"
-            endingLineNumber = "83"
+            startingLineNumber = "160"
+            endingLineNumber = "160"
             landmarkName = "testExample()"
             landmarkType = "5">
          </BreakpointContent>

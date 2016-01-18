@@ -76,14 +76,91 @@ class DerTest: XCTestCase {
         "f55015755ce737464d38bad84014a11bd02e95be5ccf6606b798f8303479" +
         "42081a237a3eb2d58776668e11d36d4112a07e71b7fac00d2cef630d878b" +
         "caa7147b6fac89bc299046e5b14c5714b8a2e562d271bae5ffd5882260"
+
+/*
+        Certificate  ::=  SEQUENCE  {
+        tbsCertificate       TBSCertificate,
+        signatureAlgorithm   AlgorithmIdentifier,
+        signatureValue       BIT STRING
+        }
         
+        TBSCertificate  ::=  SEQUENCE  {
+        version         [0]  EXPLICIT Version DEFAULT v1,
+        serialNumber         CertificateSerialNumber,
+        signature            AlgorithmIdentifier,
+        issuer               Name,
+        validity             Validity,
+        subject              Name,
+        subjectPublicKeyInfo SubjectPublicKeyInfo,
+        issuerUniqueID  [1]  IMPLICIT UniqueIdentifier OPTIONAL,
+        -- If present, version MUST be v2 or v3
+        subjectUniqueID [2]  IMPLICIT UniqueIdentifier OPTIONAL,
+        -- If present, version MUST be v2 or v3
+        extensions      [3]  EXPLICIT Extensions OPTIONAL
+        -- If present, version MUST be v3
+        }
+        
+        Version  ::=  INTEGER  {  v1(0), v2(1), v3(2)  }
+        
+        CertificateSerialNumber  ::=  INTEGER
+        
+        Validity ::= SEQUENCE {
+        notBefore      Time,
+        notAfter       Time
+        }
+        
+        Time ::= CHOICE {
+        utcTime        UTCTime,
+        generalTime    GeneralizedTime
+        }
+        
+        UniqueIdentifier  ::=  BIT STRING
+        
+        SubjectPublicKeyInfo  ::=  SEQUENCE  {
+        algorithm            AlgorithmIdentifier,
+        subjectPublicKey     BIT STRING
+        }
+        
+        AlgorithmIdentifier  ::=  SEQUENCE  {
+        algorithm               OBJECT IDENTIFIER,
+        parameters              ANY DEFINED BY algorithm OPTIONAL
+        }
+        
+        Extensions  ::=  SEQUENCE SIZE (1..MAX) OF Extension
+        
+        Extension  ::=  SEQUENCE  {
+        extnID      OBJECT IDENTIFIER,
+        critical    BOOLEAN DEFAULT FALSE,
+        extnValue   OCTET STRING
+        -- contains the DER encoding of an ASN.1 value
+        -- corresponding to the extension type identified
+        -- by extnID
+        }
+        
+        Name ::= CHOICE { -- only one possibility for now --
+        rdnSequence  RDNSequence
+        }
+        
+        RDNSequence ::= SEQUENCE OF RelativeDistinguishedName
+        
+        RelativeDistinguishedName ::=
+        SET SIZE (1..MAX) OF AttributeTypeAndValue
+        
+        AttributeTypeAndValue ::= SEQUENCE {
+        type     AttributeType,
+        value    AttributeValue }
+        
+        AttributeType ::= OBJECT IDENTIFIER
+        
+        AttributeValue ::= ANY -- DEFINED BY AttributeType
+        */
         
         let bytes = try! cert.bytesFromHex()
         
         let node = try! Der.parse(bytes[0..<bytes.count])
         print(node)
         
-        let dd = try! Der.serialize(node)
-        print(dd)
+        //let dd = try! Der.serialize(node)
+        //print(dd)
     }
 }
