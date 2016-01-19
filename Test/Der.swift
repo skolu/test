@@ -27,7 +27,7 @@ struct Der {
     static let UTCTime:UInt8            = 0x17
     static let GeneralizedTime:UInt8    = 0x18
     static let BMP_String:UInt8         = 0x1d
-
+    
     static let TypeMask:UInt8           = 0b0001_1111
     static let ContextMask:UInt8        = 0b1100_0000
     static let Constructed:UInt8        = 0b0010_0000
@@ -63,8 +63,9 @@ enum DerNode: CustomStringConvertible {
     case STRING(type:Der.StringTypes, value:String)
     case OBJECT_IDENTIFIER(value:[UInt])
     case TIME(type:Der.TimeTypes, value:NSDate)
-
-    indirect case TAG(number:UInt8, value:DerNode)
+    case IMPLICIT(number:UInt8, value:[UInt8])
+    
+    indirect case EXPLICIT(number:UInt8, value:DerNode)
     indirect case ARRAY(type:Der.CollectionTypes, value:[DerNode])
     
     var tag:UInt8 {
@@ -114,7 +115,10 @@ enum DerNode: CustomStringConvertible {
                 case .GeneralizedTime:
                     result = Der.GeneralizedTime
                 }
-            case let TAG(number: n, value: _):
+            case let IMPLICIT(number: n, value: _):
+                result = n & 0x1f
+                contextSpecific = true
+            case let EXPLICIT(number: n, value: _):
                 result = n & 0x1f
                 contextSpecific = true
                 constructed = true
@@ -179,7 +183,15 @@ enum DerNode: CustomStringConvertible {
         case let .TIME(type: t, value: v):
             type = "\(t)"
             value = "\(v)"
-        case let .TAG(number: n, value: v):
+        case let .IMPLICIT(number: n, value: v):
+            type = "[\(n)] IMPLICIT"
+            value = v.prefix(20).map({ (byte) -> String in
+                return String(format:"%02X", byte)
+            }).joinWithSeparator("")
+            if v.count > 20 {
+                value += "..."
+            }
+        case let .EXPLICIT(number: n, value: v):
             type = "[\(n)] EXPLICIT"
             inlineValue = false
             value = v.dump(tabs+1)
@@ -190,7 +202,7 @@ enum DerNode: CustomStringConvertible {
                 return node.dump(tabs+1)
             }).joinWithSeparator("\n")
         }
-
+        
         result += String(format:"%02X", tag)
         if inlineValue {
             result += " (\(type)) \(value)"
@@ -284,104 +296,108 @@ extension Der {
                 if nodes.count != 1 {
                     throw DerError.InvalidData("expected only one EXPLICIT node")
                 }
-                return DerNode.TAG(number: derType, value: nodes[0])
+                return DerNode.EXPLICIT(number: derType, value: nodes[0])
             } else {
                 return DerNode.ARRAY(type: derType == SET ? .Set : .Sequence, value: nodes)
             }
         } else {
-            switch derType {
-            case BOOLEAN:
-                if length != 1 {
-                    throw DerError.InvalidData("Length of BOOLEAN value is not 1")
-                }
-                return DerNode.BOOLEAN(value: bytes[bytes.startIndex] != 0)
-            case INTEGER, REAL, BIT_STRING, OCTET_STRING:
-                var type:DataTypes = .OctetString
+            if contextSpecific {
+                return DerNode.IMPLICIT(number: derType, value: [UInt8](bytes))
+            } else {
                 switch derType {
-                case INTEGER:
-                    type = .Integer
-                case REAL:
-                    type = .Real
-                case BIT_STRING:
-                    type = .BitString
-                default:
-                    break
-                }
-                return DerNode.DATA(type: type, value: [UInt8](bytes))
-            case NULL:
-                if length != 0 {
-                    throw DerError.InvalidData("Length of NULL is not 0")
-                }
-                return DerNode.NULL()
-            case OBJECT_IDENTIFIER:
-                if length == 0 {
-                    throw DerError.InvalidData("Length of OBJECT IDENTIFIER is 0")
-                }
-                var oid = [UInt]()
-                oid.append(UInt(data[index]) / 40)
-                oid.append(UInt(data[index]) % 40)
-                var offset = 1
-                var comp:UInt = 0
-                while offset < length {
-                    let byte = data[index+offset]
-                    comp <<= 7
-                    comp += UInt(byte & 0x7f)
-                    if byte < 0x80 {
-                        oid.append(comp)
-                        comp = 0
+                case BOOLEAN:
+                    if length != 1 {
+                        throw DerError.InvalidData("Length of BOOLEAN value is not 1")
                     }
-                    offset++
-                }
-                return DerNode.OBJECT_IDENTIFIER(value: oid)
-                
-            case UTF8_String, BMP_String, IA5_String, PrintableString, NumericString, T61String:
-                var encoding = NSUTF8StringEncoding
-                var type:StringTypes = .Utf8String
-                switch derType {
-                case UTF8_String:
-                    encoding = NSUTF8StringEncoding
-                    type = .Utf8String
-                case BMP_String:
-                    encoding = NSUTF16StringEncoding
-                    type = .BmpString
-                case IA5_String:
-                    encoding = NSASCIIStringEncoding
-                    type = .IA5_String
-                case PrintableString:
-                    encoding = NSASCIIStringEncoding
-                    type = .PrintableString
-                case NumericString:
-                    encoding = NSASCIIStringEncoding
-                    type = .NumericString
-                case T61String:
-                    encoding = NSISOLatin1StringEncoding
-                    type = .T61String
-                default:
-                    break
-                }
-                
-                let str = String(bytes: bytes, encoding: encoding)
-                if let s = str {
-                    return DerNode.STRING(type: type, value: s)
-                } else {
-                    throw DerError.InvalidData("String encoding")
-                }
-
-            case GeneralizedTime, UTCTime:
-                let dateFormatter = NSDateFormatter()
-                dateFormatter.dateFormat = derType == GeneralizedTime ? "yyyyMMddHHmmssZ" : "yyMMddHHmmssZ"
-                if let str = String(bytes: bytes, encoding: NSUTF8StringEncoding) {
-                    if let date = dateFormatter.dateFromString(str) {
-                        let type:TimeTypes = derType == GeneralizedTime ? .GeneralizedTime : .UTCTime
-                        return DerNode.TIME(type: type, value: date)
+                    return DerNode.BOOLEAN(value: bytes[bytes.startIndex] != 0)
+                case INTEGER, REAL, BIT_STRING, OCTET_STRING:
+                    var type:DataTypes = .OctetString
+                    switch derType {
+                    case INTEGER:
+                        type = .Integer
+                    case REAL:
+                        type = .Real
+                    case BIT_STRING:
+                        type = .BitString
+                    default:
+                        break
+                    }
+                    return DerNode.DATA(type: type, value: [UInt8](bytes))
+                case NULL:
+                    if length != 0 {
+                        throw DerError.InvalidData("Length of NULL is not 0")
+                    }
+                    return DerNode.NULL()
+                case OBJECT_IDENTIFIER:
+                    if length == 0 {
+                        throw DerError.InvalidData("Length of OBJECT IDENTIFIER is 0")
+                    }
+                    var oid = [UInt]()
+                    oid.append(UInt(data[index]) / 40)
+                    oid.append(UInt(data[index]) % 40)
+                    var offset = 1
+                    var comp:UInt = 0
+                    while offset < length {
+                        let byte = data[index+offset]
+                        comp <<= 7
+                        comp += UInt(byte & 0x7f)
+                        if byte < 0x80 {
+                            oid.append(comp)
+                            comp = 0
+                        }
+                        offset++
+                    }
+                    return DerNode.OBJECT_IDENTIFIER(value: oid)
+                    
+                case UTF8_String, BMP_String, IA5_String, PrintableString, NumericString, T61String:
+                    var encoding = NSUTF8StringEncoding
+                    var type:StringTypes = .Utf8String
+                    switch derType {
+                    case UTF8_String:
+                        encoding = NSUTF8StringEncoding
+                        type = .Utf8String
+                    case BMP_String:
+                        encoding = NSUTF16StringEncoding
+                        type = .BmpString
+                    case IA5_String:
+                        encoding = NSASCIIStringEncoding
+                        type = .IA5_String
+                    case PrintableString:
+                        encoding = NSASCIIStringEncoding
+                        type = .PrintableString
+                    case NumericString:
+                        encoding = NSASCIIStringEncoding
+                        type = .NumericString
+                    case T61String:
+                        encoding = NSISOLatin1StringEncoding
+                        type = .T61String
+                    default:
+                        break
+                    }
+                    
+                    let str = String(bytes: bytes, encoding: encoding)
+                    if let s = str {
+                        return DerNode.STRING(type: type, value: s)
                     } else {
-                        throw DerError.InvalidData("DateTime format")
+                        throw DerError.InvalidData("String encoding")
                     }
-                } else {
-                    throw DerError.InvalidData("DateTime string")
+                    
+                case GeneralizedTime, UTCTime:
+                    let dateFormatter = NSDateFormatter()
+                    dateFormatter.dateFormat = derType == GeneralizedTime ? "yyyyMMddHHmmssZ" : "yyMMddHHmmssZ"
+                    if let str = String(bytes: bytes, encoding: NSUTF8StringEncoding) {
+                        if let date = dateFormatter.dateFromString(str) {
+                            let type:TimeTypes = derType == GeneralizedTime ? .GeneralizedTime : .UTCTime
+                            return DerNode.TIME(type: type, value: date)
+                        } else {
+                            throw DerError.InvalidData("DateTime format")
+                        }
+                    } else {
+                        throw DerError.InvalidData("DateTime string")
+                    }
+                default:
+                    break
                 }
-            default:
-                break
             }
         }
         throw DerError.Unimplemented
@@ -451,5 +467,5 @@ extension Der {
     return result
     }
     */
-
+    
 }
