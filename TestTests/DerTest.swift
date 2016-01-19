@@ -155,6 +155,10 @@ class DerTest: XCTestCase {
         AttributeValue ::= ANY -- DEFINED BY AttributeType
         */
         
+        //let aa = try! cert.bytesFromHex()
+        //print(try! Der.parse(aa[aa.startIndex..<aa.endIndex]))
+        
+        
         var cert_fields = [DerNode]()
         cert_fields.append(DerNode.EXPLICIT(number: 0, value: DerNode.DATA(type: .Integer, value: [1])))
         cert_fields.append(DerNode.DATA(type: .Integer, value: try! "0000000000000000".bytesFromHex()))
@@ -167,7 +171,7 @@ class DerTest: XCTestCase {
             DerNode.ARRAY(type: .Set, value: [
                 DerNode.ARRAY(type: .Sequence, value: [
                     DerNode.OBJECT_IDENTIFIER(value: [2,5,4,3]),
-                    DerNode.STRING(type: .PrintableString, value: "dev.skolupaev.info")])])]))
+                    DerNode.STRING(type: .PrintableString, value: "dev.keepersecurity.com")])])]))
         
         
         
@@ -177,7 +181,7 @@ class DerTest: XCTestCase {
         }
         bytes.insert(0, atIndex: bytes.startIndex)
         cert_fields.append(DerNode.ARRAY(type: .Sequence, value: [
-            DerNode.ARRAY(type: .Sequence, value: [DerNode.OBJECT_IDENTIFIER(value: [1,2,840,113549,1,1,11]), DerNode.NULL()]),
+            DerNode.ARRAY(type: .Sequence, value: [DerNode.OBJECT_IDENTIFIER(value: [1,2,840,113549,1,1,1]), DerNode.NULL()]),
             DerNode.DATA(type: .BitString, value: bytes)]))
 
         let certificate = DerNode.ARRAY(type: .Sequence, value: [
