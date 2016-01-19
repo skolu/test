@@ -155,12 +155,50 @@ class DerTest: XCTestCase {
         AttributeValue ::= ANY -- DEFINED BY AttributeType
         */
         
-        let bytes = try! cert.bytesFromHex()
+        var cert_fields = [DerNode]()
+        cert_fields.append(DerNode.EXPLICIT(number: 0, value: DerNode.DATA(type: .Integer, value: [1])))
+        cert_fields.append(DerNode.DATA(type: .Integer, value: try! "0000000000000000".bytesFromHex()))
+        cert_fields.append(DerNode.ARRAY(type: .Sequence, value: [
+            DerNode.OBJECT_IDENTIFIER(value: [1,2,840,113549,1,1,11]), DerNode.NULL()]))
+        cert_fields.append(DerNode.ARRAY(type: .Sequence, value: []))
+        cert_fields.append(DerNode.ARRAY(type: .Sequence, value: [
+            DerNode.TIME(type: .UTCTime, value: NSDate()), DerNode.TIME(type: .UTCTime, value: NSDate())]))
+        cert_fields.append(DerNode.ARRAY(type: .Sequence, value: [
+            DerNode.ARRAY(type: .Set, value: [
+                DerNode.ARRAY(type: .Sequence, value: [
+                    DerNode.OBJECT_IDENTIFIER(value: [2,5,4,3]),
+                    DerNode.STRING(type: .PrintableString, value: "dev.skolupaev.info")])])]))
         
-        let node = try! Der.parse(bytes[0..<bytes.count])
-        print(node)
         
-        //let dd = try! Der.serialize(node)
-        //print(dd)
+        
+        var bytes = try! pk.bytesFromHex()
+        if bytes[bytes.startIndex] >= 0x80 {
+            bytes.insert(0, atIndex: bytes.startIndex)
+        }
+        bytes.insert(0, atIndex: bytes.startIndex)
+        cert_fields.append(DerNode.ARRAY(type: .Sequence, value: [
+            DerNode.ARRAY(type: .Sequence, value: [DerNode.OBJECT_IDENTIFIER(value: [1,2,840,113549,1,1,11]), DerNode.NULL()]),
+            DerNode.DATA(type: .BitString, value: bytes)]))
+
+        let certificate = DerNode.ARRAY(type: .Sequence, value: [
+            DerNode.ARRAY(type: .Sequence, value: cert_fields),
+            DerNode.ARRAY(type: .Sequence, value: [
+                DerNode.OBJECT_IDENTIFIER(value: [1,2,840,113549,1,1,11]), DerNode.NULL()]),
+            DerNode.DATA(type: .BitString, value: [00])
+            ])
+
+        print(certificate)
+
+        let dd = try! Der.serialize(certificate)
+        let data = NSData(bytes: dd, length: dd.count)
+        
+        let certRef = SecCertificateCreateWithData(nil, data)
+        let subj = SecCertificateCopySubjectSummary(certRef!)
+        let secPolicy = SecPolicyCreateBasicX509();
+        
+        var trust:SecTrustRef? = nil
+        let statusTrust = SecTrustCreateWithCertificates(certRef!, secPolicy, &trust);
+        let pkk = SecTrustCopyPublicKey(trust!)
+        XCTAssertNotNil(pkk)
     }
 }

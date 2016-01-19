@@ -39,10 +39,45 @@ struct Der {
     
     enum StringTypes {
         case Utf8String, NumericString, PrintableString, T61String, IA5_String, BmpString
+        
+        func encoding() -> UInt {
+            switch self {
+            case .Utf8String:
+                return NSUTF8StringEncoding
+            case .BmpString:
+                return NSUTF16StringEncoding
+            case .IA5_String, .PrintableString, .NumericString:
+                return NSASCIIStringEncoding
+            case .T61String:
+                return NSISOLatin1StringEncoding
+            }
+        }
     }
     
     enum TimeTypes {
         case UTCTime, GeneralizedTime
+        
+        func formatter() -> NSDateFormatter {
+            switch self {
+            case .UTCTime:
+                if TimeTypes.utcFormatter == nil {
+                    TimeTypes.utcFormatter = NSDateFormatter()
+                    TimeTypes.utcFormatter!.timeZone = NSTimeZone(name: "UTC")
+                    TimeTypes.utcFormatter!.dateFormat = "yyMMddHHmmss'Z'"
+                }
+                return TimeTypes.utcFormatter!
+            case .GeneralizedTime:
+                if TimeTypes.generalizedFormatter == nil {
+                    TimeTypes.generalizedFormatter = NSDateFormatter()
+                    TimeTypes.utcFormatter!.timeZone = NSTimeZone(name: "UTC")
+                    TimeTypes.generalizedFormatter!.dateFormat = "yyyyMMddHHmmss'Z'"
+                }
+                return TimeTypes.generalizedFormatter!
+            }
+        }
+        
+        private static var utcFormatter: NSDateFormatter? = nil
+        private static var generalizedFormatter: NSDateFormatter? = nil
     }
     
     enum CollectionTypes {
@@ -133,12 +168,6 @@ enum DerNode: CustomStringConvertible {
             }
             
             return (contextSpecific ? Der.ContextSpecific : 0x00) | (constructed ? Der.Constructed : 0x00) | result
-        }
-    }
-    
-    var data:[UInt8] {
-        get {
-            return [UInt8]()
         }
     }
     
@@ -350,31 +379,25 @@ extension Der {
                     return DerNode.OBJECT_IDENTIFIER(value: oid)
                     
                 case UTF8_String, BMP_String, IA5_String, PrintableString, NumericString, T61String:
-                    var encoding = NSUTF8StringEncoding
                     var type:StringTypes = .Utf8String
                     switch derType {
                     case UTF8_String:
-                        encoding = NSUTF8StringEncoding
                         type = .Utf8String
                     case BMP_String:
-                        encoding = NSUTF16StringEncoding
                         type = .BmpString
                     case IA5_String:
-                        encoding = NSASCIIStringEncoding
                         type = .IA5_String
                     case PrintableString:
-                        encoding = NSASCIIStringEncoding
                         type = .PrintableString
                     case NumericString:
-                        encoding = NSASCIIStringEncoding
                         type = .NumericString
                     case T61String:
-                        encoding = NSISOLatin1StringEncoding
                         type = .T61String
                     default:
                         break
                     }
-                    
+
+                    let encoding = type.encoding()
                     let str = String(bytes: bytes, encoding: encoding)
                     if let s = str {
                         return DerNode.STRING(type: type, value: s)
@@ -383,11 +406,9 @@ extension Der {
                     }
                     
                 case GeneralizedTime, UTCTime:
-                    let dateFormatter = NSDateFormatter()
-                    dateFormatter.dateFormat = derType == GeneralizedTime ? "yyyyMMddHHmmssZ" : "yyMMddHHmmssZ"
                     if let str = String(bytes: bytes, encoding: NSUTF8StringEncoding) {
-                        if let date = dateFormatter.dateFromString(str) {
-                            let type:TimeTypes = derType == GeneralizedTime ? .GeneralizedTime : .UTCTime
+                        let type:TimeTypes = derType == GeneralizedTime ? .GeneralizedTime : .UTCTime
+                        if let date = type.formatter().dateFromString(str) {
                             return DerNode.TIME(type: type, value: date)
                         } else {
                             throw DerError.InvalidData("DateTime format")
@@ -403,69 +424,56 @@ extension Der {
         throw DerError.Unimplemented
     }
     
-    /*
-    static func serialize(der: DerNode) throws -> [UInt8] {
-    var result = [UInt8]()
-    var tag:DerTag = .NULL
-    
-    switch der {
-    case .BOOLEAN(let b):
-    result.append(b ? 0xff : 0x00)
-    tag = .BOOLEAN
-    case .INTEGER(let bytes):
-    result.appendContentsOf(bytes)
-    tag = DerTag.INTEGER
-    case .DATA(let tail, let bytes):
-    result.appendContentsOf(bytes)
-    if tail != 0 {
-    result.insert(tail > 0 ? UInt8(tail) : 0, atIndex: 0)
+    static func serialize(derNode: DerNode) throws -> [UInt8] {
+        var result = [UInt8]()
+        
+        switch derNode {
+        case .NULL:
+            break
+        case let .BOOLEAN(value: b):
+            result.append(b ? 0xff : 0x00)
+        case let .DATA(type:_, value: bytes):
+            result.appendContentsOf(bytes)
+        case let .STRING(type:t, value:s):
+            let encoding = t.encoding()
+            if let data = s.dataUsingEncoding(encoding) {
+                result.appendContentsOf(Repeat<UInt8>(count: data.length, repeatedValue:0))
+                data.getBytes(&result, length: result.count)
+            } else {
+                throw DerError.InvalidData("STRING encoding error")
+            }
+        case let .OBJECT_IDENTIFIER(ints):
+            if ints.count < 2 {
+                throw DerError.InvalidData("OBJECT_IDENTIFIER should have at least 2 components")
+            }
+            for i in 0..<ints.count {
+                if i == 0 {
+                    result.append(UInt8(ints[0] * 40 + ints[1]))
+                }
+                else if i > 1 {
+                    result.appendContentsOf(encode_int(ints[i]))
+                }
+            }
+        case let .TIME(type:t, value:time):
+            let s = t.formatter().stringFromDate(time)
+            if let data = s.dataUsingEncoding(NSUTF8StringEncoding) {
+                result.appendContentsOf(Repeat<UInt8>(count: data.length, repeatedValue:0))
+                data.getBytes(&result, length: result.count)
+            } else {
+                throw DerError.InvalidData("TIME formatting error")
+            }
+        case let .IMPLICIT(number:_, value:bytes):
+            result.appendContentsOf(bytes)
+        case let .EXPLICIT(number:_, value:node):
+            result.appendContentsOf(try serialize(node))
+        case let .ARRAY(type:_, value:nodes):
+            for node in nodes {
+                result.appendContentsOf(try serialize(node))
+            }
+        }
+        
+        result.insertContentsOf(encode_length(UInt(result.count)), at: 0)
+        result.insert(derNode.tag, atIndex: 0)
+        return result
     }
-    tag = tail != 0 ? DerTag.BIT_STRING : DerTag.OCTET_STRING
-    case .NULL:
-    tag = .NULL
-    case .STRING(let t, let s):
-    if t == .BMP_String {
-    s.utf16.forEach({ (cu) -> () in
-    result.append(UInt8(cu >> 8) & 0xff)
-    result.append(UInt8(cu) & 0xff)
-    })
-    }
-    else if t == .UTF8_String {
-    result.appendContentsOf(s.utf8)
-    } else {
-    s.unicodeScalars.forEach({ (us) -> () in
-    if us.isASCII() {
-    result.append(UInt8(us.value))
-    }
-    })
-    }
-    tag = t
-    case .OBJECT_IDENTIFIER(let comps):
-    if comps.count < 2 {
-    throw DerError.InvalidData("OBJECT_IDENTIFIER should have at least 2 components")
-    }
-    for i in 0..<comps.count {
-    if i == 0 {
-    result.append(UInt8(comps[0] * 40 + comps[1]))
-    }
-    else if i == 1 {
-    }
-    else {
-    result.appendContentsOf(encode_int(comps[i]))
-    }
-    }
-    
-    case .ARRAY(let t, let nodes):
-    for node in nodes {
-    result.appendContentsOf(try serialize(node))
-    }
-    tag = t
-    }
-    
-    result.insertContentsOf(encode_length(UInt(result.count)), at: 0)
-    result.insert(tag.rawValue, atIndex: 0)
-    return result
-    }
-    */
-    
 }
