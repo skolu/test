@@ -26,7 +26,7 @@ struct Der {
     static let IA5_String:UInt8         = 0x16
     static let UTCTime:UInt8            = 0x17
     static let GeneralizedTime:UInt8    = 0x18
-    static let BMP_String:UInt8         = 0x1d
+    static let BMP_String:UInt8         = 0x1e
     
     static let TypeMask:UInt8           = 0b0001_1111
     static let ContextMask:UInt8        = 0b1100_0000
@@ -273,6 +273,7 @@ extension Der {
             return bytes
         }
     }
+    
     static func parse(data: ArraySlice<UInt8>) throws -> DerNode {
         var index = data.startIndex
         let tag: UInt8 = data[index]
