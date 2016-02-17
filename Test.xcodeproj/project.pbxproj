@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		8418BA981C3CA0DA007D9CC1 /* TryCatchFinally.m in Sources */ = {isa = PBXBuildFile; fileRef = 8418BA971C3CA0DA007D9CC1 /* TryCatchFinally.m */; };
 		8418BA9A1C3CA5D7007D9CC1 /* SwiftViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8418BA991C3CA5D7007D9CC1 /* SwiftViewController.swift */; };
+		84716E551C73D44100F337F5 /* DerUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84716E541C73D44100F337F5 /* DerUtils.swift */; };
+		84716E561C73D72300F337F5 /* DerUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84716E541C73D44100F337F5 /* DerUtils.swift */; };
 		847A3B3A1C495B15002AD79E /* TestHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 847A3B391C495B15002AD79E /* TestHelpers.swift */; };
 		847B8B5A1C483ABD00E1BC0B /* DerTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 847B8B591C483ABD00E1BC0B /* DerTest.swift */; };
 		847B8B5B1C4858D800E1BC0B /* Der.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84AA67A21C46F65600F2B5C3 /* Der.swift */; };
@@ -61,6 +63,7 @@
 		8418BA961C3CA0DA007D9CC1 /* TryCatchFinally.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TryCatchFinally.h; sourceTree = "<group>"; };
 		8418BA971C3CA0DA007D9CC1 /* TryCatchFinally.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TryCatchFinally.m; sourceTree = "<group>"; };
 		8418BA991C3CA5D7007D9CC1 /* SwiftViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SwiftViewController.swift; sourceTree = "<group>"; };
+		84716E541C73D44100F337F5 /* DerUtils.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DerUtils.swift; sourceTree = "<group>"; };
 		847A3B391C495B15002AD79E /* TestHelpers.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TestHelpers.swift; sourceTree = "<group>"; };
 		847B8B591C483ABD00E1BC0B /* DerTest.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DerTest.swift; sourceTree = "<group>"; };
 		84866D741BE472C000FA8DA4 /* Test.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Test.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -136,6 +139,7 @@
 				8418BA971C3CA0DA007D9CC1 /* TryCatchFinally.m */,
 				8418BA991C3CA5D7007D9CC1 /* SwiftViewController.swift */,
 				84AA67A21C46F65600F2B5C3 /* Der.swift */,
+				84716E541C73D44100F337F5 /* DerUtils.swift */,
 			);
 			path = Test;
 			sourceTree = "<group>";
@@ -263,6 +267,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				84A85EBA1C339C3A009DE3B3 /* TableController.swift in Sources */,
+				84716E551C73D44100F337F5 /* DerUtils.swift in Sources */,
 				84F210981BF44DB80075B5F8 /* Foo.swift in Sources */,
 				84866DF51BE47EF200FA8DA4 /* AppDelegate.swift in Sources */,
 				8418BA9A1C3CA5D7007D9CC1 /* SwiftViewController.swift in Sources */,
@@ -279,6 +284,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				847B8B5A1C483ABD00E1BC0B /* DerTest.swift in Sources */,
+				84716E561C73D72300F337F5 /* DerUtils.swift in Sources */,
 				847B8B5B1C4858D800E1BC0B /* Der.swift in Sources */,
 				847A3B3A1C495B15002AD79E /* TestHelpers.swift in Sources */,
 			);
